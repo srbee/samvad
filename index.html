@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="mr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#5741a8">
+<title>माझे संवाद | Communication Board</title>
+<style>
+  :root {
+    --ink:#20213a; --purple:#5741a8; --bg:#f4f2ff; --card:#fff;
+    --accent:#ffe27a; --good:#d7f7e7; --line:#dedaf7;
+  }
+  * { box-sizing:border-box; }
+  body {
+    margin:0; color:var(--ink);
+    font-family:system-ui,-apple-system,"Noto Sans Devanagari","Nirmala UI",sans-serif;
+    background:linear-gradient(160deg,#eeeaff 0%,#f9fbff 48%,#fff5e7 100%);
+    min-height:100vh;
+  }
+  .app { max-width:760px; margin:0 auto; padding:12px 12px 28px; }
+  header {
+    color:white; background:linear-gradient(135deg,#5940ae,#8065d8);
+    border-radius:22px; padding:18px 16px 15px; text-align:center;
+    box-shadow:0 7px 20px #5741a833;
+  }
+  h1 { margin:0; font-size:clamp(1.55rem,5vw,2.15rem); line-height:1.25; }
+  .subtitle { margin:7px 0 0; font-size:.98rem; opacity:.95; }
+  .status {
+    margin:12px 0; min-height:54px; padding:11px 14px; border:2px solid var(--line);
+    border-radius:16px; background:#fff; display:flex; align-items:center; gap:10px;
+    font-size:1.05rem; font-weight:650;
+  }
+  .status .dot { width:13px; height:13px; border-radius:50%; background:#8b78dc; flex:none; }
+  .toolbar { display:flex; gap:8px; flex-wrap:wrap; margin:10px 0 14px; }
+  .tool {
+    border:0; border-radius:13px; padding:10px 13px; font:inherit; font-weight:700;
+    background:#e6e0ff; color:#392b7c; min-height:44px; cursor:pointer;
+  }
+  .tool:focus-visible, .tile:focus-visible { outline:4px solid #ffad42; outline-offset:2px; }
+  .tool.primary { background:#5741a8; color:#fff; }
+  .tool[aria-pressed="true"] { background:#ffe27a; color:#332650; }
+  .section-title { display:flex; align-items:center; gap:8px; margin:14px 3px 9px; font-size:1.08rem; font-weight:800; }
+  .grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+  .tile {
+    min-height:100px; padding:12px 7px; border:2px solid #fff; border-radius:19px;
+    box-shadow:0 3px 10px #30205a12; cursor:pointer; color:#282044;
+    display:flex; flex-direction:column; justify-content:center; align-items:center;
+    gap:6px; text-align:center; font:inherit; font-weight:800; font-size:clamp(1rem,3.8vw,1.2rem);
+    line-height:1.2; overflow-wrap:anywhere; transition:transform .12s, background .15s;
+    -webkit-tap-highlight-color:transparent; touch-action:manipulation;
+  }
+  .tile:active { transform:scale(.97); }
+  .tile .emoji { font-size:1.8rem; line-height:1; }
+  .tile .small { font-size:.75rem; font-weight:600; opacity:.78; }
+  .tile.selected { background:var(--good)!important; border-color:#36ad79; box-shadow:0 0 0 3px #36ad7922; }
+  .tile.submenu { border-style:dashed; border-color:#c5b9f5; }
+  .hidden { display:none!important; }
+  .panel {
+    margin-top:12px; padding:13px; background:#ffffffd9; border:2px solid var(--line);
+    border-radius:20px;
+  }
+  .panel-head { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:10px; }
+  .panel-head h2 { font-size:1.2rem; margin:0; }
+  .back { border:0; border-radius:12px; padding:9px 12px; background:#eee9ff; color:#3c2c85; font:inherit; font-weight:800; min-height:42px; }
+  .sentence {
+    margin-top:14px; padding:14px; border-radius:18px; background:#fff;
+    border:2px solid #e3def9;
+  }
+  .sentence label { display:block; font-weight:800; margin-bottom:8px; }
+  #message { width:100%; min-height:55px; resize:vertical; border:2px solid #d8d0f6; border-radius:12px; padding:10px; font:inherit; font-size:1.1rem; }
+  .actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:9px; }
+  .help { font-size:.88rem; color:#5c5870; line-height:1.45; margin:12px 3px 0; }
+  .editbox { margin-top:12px; padding:13px; border:2px dashed #c6b9f5; border-radius:18px; background:#fff; }
+  .editbox input { width:100%; padding:10px; margin:5px 0 9px; border:1px solid #c9c2e7; border-radius:10px; font:inherit; }
+  .editbox label { font-weight:750; display:block; }
+  .tiny { font-size:.8rem; opacity:.78; }
+  @media (max-width:420px) {
+    .app { padding:8px 8px 22px; }
+    .grid { gap:7px; }
+    .tile { min-height:91px; border-radius:15px; padding:9px 4px; }
+    .tile .emoji { font-size:1.55rem; }
+    header { border-radius:18px; padding:16px 10px; }
+    .toolbar { gap:6px; }
+    .tool { flex:1; padding:9px 7px; font-size:.91rem; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition:none!important; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>--- संवादिनी ---</h1>
+    <p class="subtitle">मला काय सांगायचे आहे?</p>
+  </header>
+
+  <div class="status" aria-live="polite" aria-atomic="true">
+    <span class="dot"></span><span id="statusText">खालील बटणांपैकी एक निवडा.</span>
+  </div>
+
+  <div class="toolbar" aria-label="Communication controls">
+    <button class="tool primary" id="speakLast" type="button">🔊 पुन्हा बोला</button>
+    <button class="tool" id="soundToggle" type="button" aria-pressed="true">🎵 आवाज: चालू</button>
+    <button class="tool" id="clearMessage" type="button">✖ संदेश पुसा</button>
+    <button class="tool" id="editToggle" type="button" aria-expanded="false">⚙️ बटणे बदला</button>
+  </div>
+
+  <main>
+    <section id="homeView">
+      <div class="section-title">🌈 मला सांगायचे आहे…</div>
+      <div class="grid" id="mainGrid"></div>
+    </section>
+
+    <section id="subView" class="panel hidden" aria-live="polite">
+      <div class="panel-head">
+        <h2 id="subTitle">उपविभाग</h2>
+        <button class="back" id="backButton" type="button">← मागे</button>
+      </div>
+      <div class="grid" id="subGrid"></div>
+    </section>
+
+    <section class="sentence">
+      <label for="message">🗨️ माझा संदेश</label>
+      <textarea id="message" placeholder="निवडलेले शब्द येथे दिसतील. हवे असल्यास इथे टाइप करा." aria-label="माझा संदेश"></textarea>
+      <div class="actions">
+        <button class="tool primary" id="speakMessage" type="button">🗣️ संदेश बोलून दाखवा</button>
+        <button class="tool" id="copyMessage" type="button">📋 कॉपी करा</button>
+      </div>
+    </section>
+
+    <section id="editBox" class="editbox hidden">
+      <strong>🛠️ काळजीवाहकासाठी — बटणांची मांडणी</strong>
+      <p class="tiny">निवडलेले बटण येथे बदला. बदल या उपकरणाच्या ब्राउझरमध्ये जतन होतील.</p>
+      <label for="editChoice">बटण निवडा</label>
+      <select id="editChoice" style="width:100%;padding:10px;border:1px solid #c9c2e7;border-radius:10px;font:inherit"></select>
+      <label for="editLabel">बटणावर दिसणारा मजकूर</label>
+      <input id="editLabel" maxlength="40" placeholder="उदा. मला पाणी हवे आहे">
+      <label for="editEmoji">चिन्ह / इमोजी</label>
+      <input id="editEmoji" maxlength="8" placeholder="उदा. 💧">
+      <div class="actions">
+        <button class="tool primary" id="saveEdit" type="button">बदल जतन करा</button>
+        <button class="tool" id="resetEdit" type="button">मूळ बटणे परत आणा</button>
+      </div>
+    </section>
+  </main>
+
+  <p class="help">टीप: आवाज उपलब्ध असणे हे फोनच्या ब्राउझर आणि मराठी text-to-speech आवाजावर अवलंबून आहे. सुरुवातीला काळजीवाहकाने बटणांवरील शब्द व्यक्तीच्या गरजेनुसार बदलून घ्यावेत. हा संवाद-सहाय्यक आहे; आपत्कालीन मदतीचा पर्याय नाही.</p>
+</div>
+<script>
+(() => {
+  const originalItems = [
+    {id:'medicine', label:'औषध', emoji:'💊', color:'#ffe2df', children:[
+      {label:'मला औषध हवे आहे',emoji:'💊'},{label:'औषध घेतले',emoji:'✅'},{label:'औषधाची वेळ झाली का?',emoji:'⏰'},{label:'Syndopa',emoji:'💊'}
+    ]},
+    {id:'hunger', label:'भूक', emoji:'🍽️', color:'#fff0c8', children:[
+      {label:'मला भूक लागली आहे',emoji:'🍽️'},{label:'नाश्ता',emoji:'🥣'},{label:'दुपारचे जेवण',emoji:'🍛'},{label:'रात्रीचे जेवण',emoji:'🍲'},{label:'आणखी हवे',emoji:'➕'},{label:'पुरे झाले',emoji:'👌'}
+    ]},
+    {id:'thirst', label:'तहान', emoji:'💧', color:'#dff3ff', children:[
+      {label:'मला पाणी हवे आहे',emoji:'💧'},{label:'गरम पाणी',emoji:'♨️'},{label:'थंड पाणी',emoji:'🧊'},{label:'चहा',emoji:'☕'}
+    ]},
+    {id:'yes', label:'होय', emoji:'👍', color:'#dcf8e8'},
+    {id:'no', label:'नाही', emoji:'👎', color:'#ffe2e5'},
+    {id:'hot', label:'गरम', emoji:'🔥', color:'#ffe4d1', children:[
+      {label:'मला गरम वाटत आहे',emoji:'🥵'},{label:'पंखा वाढवा',emoji:'🌀'},{label:'थंड पाणी हवे',emoji:'💧'}
+    ]},
+    {id:'cold', label:'थंड', emoji:'🧊', color:'#dff3ff', children:[
+      {label:'मला थंडी वाजते',emoji:'🥶'},{label:'पंखा कमी करा',emoji:'🌀'},{label:'मला चादर हवी',emoji:'🛏️'}
+    ]},
+    {id:'pain', label:'वेदना', emoji:'🩹', color:'#fce1f3', children:[
+      {label:'मला वेदना होत आहेत',emoji:'🩹'},{label:'डोके दुखते',emoji:'🤕'},{label:'पोट दुखते',emoji:'🫃'},{label:'छातीत दुखते',emoji:'❤️‍🩹'},{label:'हात दुखतो',emoji:'💪'},{label:'पाय दुखतो',emoji:'🦶'},{label:'डॉक्टरांना बोलवा',emoji:'🩺'}
+    ]},
+    {id:'toilet', label:'स्वच्छतागृह', emoji:'🚻', color:'#e8e4ff', children:[
+      {label:'मला लघवीला जायचे आहे',emoji:'🚻'},{label:'मला शौचाला जायचे आहे',emoji:'🚽'},{label:'मला मदत करा',emoji:'🤝'}
+    ]},
+    {id:'sleep', label:'झोप', emoji:'😴', color:'#e4e8ff', children:[
+      {label:'मला झोपायचे आहे',emoji:'😴'},{label:'मला झोप येत नाही',emoji:'🌙'},{label:'उशी नीट करा',emoji:'🛏️'}
+    ]},
+    {id:'bath', label:'आंघोळ', emoji:'🛁', color:'#d9f7f3', children:[
+      {label:'मला आंघोळ करायची आहे',emoji:'🛁'},{label:'मला चेहरा धुवायचा आहे',emoji:'💦'},{label:'टॉवेल द्या',emoji:'🧺'}
+    ]},
+    {id:'clothes', label:'कपडे', emoji:'👕', color:'#ffe9c9', children:[
+      {label:'कपडे बदला',emoji:'👕'},{label:'मला थंडी वाजते',emoji:'🧥'},{label:'मला गरम होते',emoji:'🌞'}
+    ]},
+    {id:'position', label:'हालचाल', emoji:'🛏️', color:'#e6f5d9', children:[
+      {label:'मला बसायचे आहे',emoji:'🪑'},{label:'मला झोपायचे आहे',emoji:'🛏️'},{label:'मला कुशीवर वळवा',emoji:'↪️'},{label:'मला उठायला मदत करा',emoji:'🤝'}
+    ]},
+    {id:'help', label:'मदत', emoji:'🆘', color:'#ffe0df', children:[
+      {label:'मला मदत हवी आहे',emoji:'🤝'},{label:'काळजीवाहकाला बोलवा',emoji:'🔔'},{label:'डॉक्टरांना बोलवा',emoji:'🩺'},{label:'मला अस्वस्थ वाटते',emoji:'💗'}
+    ]},
+    {id:'comfort', label:'आराम', emoji:'🌼', color:'#fff2c7', children:[
+      {label:'मला आराम हवा आहे',emoji:'🌼'},{label:'खिडकी उघडा',emoji:'🪟'},{label:'खिडकी बंद करा',emoji:'🪟'},{label:'दिवा चालू करा',emoji:'💡'},{label:'दिवा बंद करा',emoji:'🌙'}
+    ]},
+    {id:'feelings', label:'भावना', emoji:'😊', color:'#f9e2ff', children:[
+      {label:'मला आनंदी वाटते',emoji:'😊'},{label:'मला दुःख होत आहे',emoji:'😢'},{label:'मला भीती वाटते',emoji:'😟'},{label:'मला राग आला आहे',emoji:'😠'},{label:'माझे ऐका',emoji:'👂'}
+    ]},
+    {id:'thanks', label:'धन्यवाद', emoji:'🙏', color:'#e0efff'},
+    {id:'family', label:'कुटुंब', emoji:'👨‍👩‍👧', color:'#fce8d9', children:[
+      {label:'आईला बोलवा',emoji:'👩'},{label:'बाबांना बोलवा',emoji:'👨'},{label:'माझ्या जवळ बसा',emoji:'🪑'},{label:'माझा हात धरा',emoji:'🤝'}
+    ]}
+  ];
+  const STORAGE_KEY = 'maaze-samvaad-board-v1';
+  let items = loadItems();
+  let soundOn = true, lastSpoken = '', activeParent = null, lockedTile = null;
+
+  function loadItems() {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length) return parsed;
+      }
+    } catch(e) {}
+    return JSON.parse(JSON.stringify(originalItems));
+  }
+  function saveItems() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); } catch(e) {} }
+  const mainGrid = document.getElementById('mainGrid');
+  const subGrid = document.getElementById('subGrid');
+  const subView = document.getElementById('subView');
+  const homeView = document.getElementById('homeView');
+  const message = document.getElementById('message');
+  const statusText = document.getElementById('statusText');
+
+  function pleasantTone() {
+    if (!soundOn) return;
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      const ctx = new Ctx(), osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.type = 'sine'; osc.frequency.setValueAtTime(660, ctx.currentTime);
+      osc.frequency.setValueAtTime(880, ctx.currentTime + 0.07);
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.12, ctx.currentTime + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.19);
+      osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 0.2);
+      osc.onended = () => ctx.close();
+    } catch(e) {}
+  }
+  function speak(text) {
+    if (!text) return;
+    lastSpoken = text;
+    if (!('speechSynthesis' in window)) {
+      statusText.textContent = 'या ब्राउझरमध्ये बोलण्याची सुविधा उपलब्ध नाही. संदेश वाचून दाखवा.';
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'mr-IN'; utterance.rate = 0.88; utterance.pitch = 1.02;
+    window.speechSynthesis.speak(utterance);
+  }
+  function lockTile(button) {
+    if (lockedTile) lockedTile.classList.remove('selected');
+    lockedTile = button;
+    if (lockedTile) lockedTile.classList.add('selected');
+  }
+  function addMessage(text) {
+    // Do not add the same phrase twice if a button is tapped repeatedly.
+    const current = message.value.trim();
+    const parts = current ? current.split(/।\\s*/) : [];
+    if (!parts.length || parts[parts.length - 1] !== text) {
+      message.value = current ? current + '। ' + text : text;
+    }
+    lastSpoken = text;
+    statusText.textContent = 'निवडले: ' + text;
+    pleasantTone();
+    speak(text);
+  }
+  function makeTile(item, parentId = null, index = 0) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'tile';
+    b.style.background = item.color || '#eee9ff';
+    b.innerHTML = '<span class="emoji"></span><span class="label"></span>' +
+      (item.children ? '<span class="small">उपबटणे उघडा ›</span>' : '');
+    b.querySelector('.emoji').textContent = item.emoji || '💬';
+    b.querySelector('.label').textContent = item.label;
+    if (item.children) b.classList.add('submenu');
+    b.setAttribute('aria-label', item.label + (item.children ? ', उपबटणे उघडा' : ''));
+    b.addEventListener('click', () => {
+      lockTile(b);
+      if (item.children) showSubmenu(item);
+      else addMessage(item.label);
+    });
+    return b;
+  }
+  function renderMain() {
+    mainGrid.innerHTML = '';
+    lockedTile = null;
+    items.forEach(item => mainGrid.appendChild(makeTile(item)));
+  }
+  function showSubmenu(item) {
+    activeParent = item;
+    document.getElementById('subTitle').textContent = (item.emoji || '💬') + ' ' + item.label;
+    subGrid.innerHTML = '';
+    item.children.forEach(child => {
+      const b = makeTile(child);
+      subGrid.appendChild(b);
+    });
+    homeView.classList.add('hidden'); subView.classList.remove('hidden');
+    subView.scrollIntoView({behavior:'smooth', block:'start'});
+  }
+  function goBack() {
+    subView.classList.add('hidden'); homeView.classList.remove('hidden'); activeParent = null;
+  }
+  document.getElementById('backButton').addEventListener('click', goBack);
+  document.getElementById('speakLast').addEventListener('click', () => speak(lastSpoken || message.value.trim()));
+  document.getElementById('speakMessage').addEventListener('click', () => speak(message.value.trim()));
+  document.getElementById('soundToggle').addEventListener('click', e => {
+    soundOn = !soundOn;
+    e.currentTarget.textContent = soundOn ? '🎵 आवाज: चालू' : '🔇 आवाज: बंद';
+    e.currentTarget.setAttribute('aria-pressed', String(soundOn));
+    if (soundOn) pleasantTone();
+  });
+  document.getElementById('clearMessage').addEventListener('click', () => {
+    message.value = ''; statusText.textContent = 'संदेश पुसला. खालील बटण निवडा.';
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+  });
+  document.getElementById('copyMessage').addEventListener('click', async () => {
+    const text = message.value.trim();
+    if (!text) { statusText.textContent = 'कॉपी करण्यासाठी आधी संदेश निवडा.'; return; }
+    try {
+      await navigator.clipboard.writeText(text);
+      statusText.textContent = 'संदेश कॉपी झाला.';
+    } catch(e) {
+      message.focus(); message.select();
+      try { document.execCommand('copy'); statusText.textContent = 'संदेश कॉपी करण्याचा प्रयत्न केला.'; }
+      catch(err) { statusText.textContent = 'संदेश निवडला आहे — कॉपी करा.'; }
+    }
+  });
+  const editBox = document.getElementById('editBox');
+  const editChoice = document.getElementById('editChoice');
+  function refreshEditChoices() {
+    editChoice.innerHTML = '';
+    items.forEach(item => {
+      const o = document.createElement('option'); o.value = item.id; o.textContent = item.label; editChoice.appendChild(o);
+    });
+    fillEditFields();
+  }
+  function fillEditFields() {
+    const item = items.find(x => x.id === editChoice.value) || items[0];
+    if (item) {
+      document.getElementById('editLabel').value = item.label;
+      document.getElementById('editEmoji').value = item.emoji || '';
+    }
+  }
+  editChoice.addEventListener('change', fillEditFields);
+  document.getElementById('editToggle').addEventListener('click', e => {
+    const opening = editBox.classList.contains('hidden');
+    editBox.classList.toggle('hidden', !opening);
+    e.currentTarget.setAttribute('aria-expanded', String(opening));
+    if (opening) refreshEditChoices();
+  });
+  document.getElementById('saveEdit').addEventListener('click', () => {
+    const item = items.find(x => x.id === editChoice.value);
+    const label = document.getElementById('editLabel').value.trim();
+    if (!item || !label) { statusText.textContent = 'कृपया बटणाचा मजकूर लिहा.'; return; }
+    item.label = label; item.emoji = document.getElementById('editEmoji').value.trim() || '💬';
+    saveItems(); renderMain(); refreshEditChoices();
+    statusText.textContent = 'बटण बदल जतन झाले.';
+  });
+  document.getElementById('resetEdit').addEventListener('click', () => {
+    items = JSON.parse(JSON.stringify(originalItems)); saveItems(); renderMain(); refreshEditChoices();
+    statusText.textContent = 'मूळ बटणे परत आणली.';
+  });
+  renderMain();
+})();
+</script>
+</body>
+</html>
